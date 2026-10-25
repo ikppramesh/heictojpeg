@@ -30,7 +30,16 @@ Example:
 python heic_to_jpeg.py /path/to/heic_images /path/to/jpeg_output --quality 85 --workers 4
 ```
 
+## Web app (Vercel)
+
+`index.html` is an upload page and `api/convert.py` is a Python serverless function that converts the uploaded image to JPG (HEIC, PNG, WebP, etc.) and returns it for download.
+
+Deploy: import this repository in Vercel (no build settings needed), or run `vercel` from the project folder. Locally, `vercel dev` serves the page and the API.
+
+Vercel limits request bodies to 4.5 MB, so uploads are capped at about 4 MB.
+
 ## Tests
 ```bash
+pip install -r requirements-dev.txt
 pytest
 ```

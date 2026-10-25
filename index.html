@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Image to JPG Converter</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+    h1 { margin-bottom: .25rem; }
+    #drop { border: 2px dashed #888; border-radius: 8px; padding: 2rem; text-align: center; cursor: pointer; }
+    #drop.over { background: #eef5ff; border-color: #2a6df4; }
+    label { display: block; margin: 1rem 0 .25rem; }
+    #status { margin-top: 1rem; min-height: 1.5rem; }
+    #status.error { color: #b00020; }
+    img { max-width: 100%; margin-top: 1rem; border-radius: 4px; }
+    a.button { display: inline-block; margin-top: 1rem; padding: .5rem 1rem; background: #2a6df4; color: #fff; border-radius: 4px; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <h1>Image to JPG Converter</h1>
+  <p>Upload a HEIC, PNG, WebP or other image (up to 4 MB) and download it as a JPG.</p>
+
+  <div id="drop">Drop an image here or click to choose one</div>
+  <input id="file" type="file" accept="image/*,.heic,.heif" hidden>
+
+  <label for="quality">JPEG quality: <span id="qval">90</span></label>
+  <input id="quality" type="range" min="1" max="100" value="90">
+
+  <div id="status" role="status"></div>
+  <div id="result"></div>
+
+  <script>
+    const MAX_BYTES = 4 * 1024 * 1024 + 400 * 1024;
+    const drop = document.getElementById('drop');
+    const fileInput = document.getElementById('file');
+    const quality = document.getElementById('quality');
+    const statusEl = document.getElementById('status');
+    const result = document.getElementById('result');
+    let lastUrl = null;
+
+    quality.addEventListener('input', () => { document.getElementById('qval').textContent = quality.value; });
+    drop.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => fileInput.files[0] && convert(fileInput.files[0]));
+    drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+    drop.addEventListener('drop', e => {
+      e.preventDefault();
+      drop.classList.remove('over');
+      if (e.dataTransfer.files[0]) convert(e.dataTransfer.files[0]);
+    });
+
+    function setStatus(text, isError) {
+      statusEl.textContent = text;
+      statusEl.className = isError ? 'error' : '';
+    }
+
+    async function convert(file) {
+      result.innerHTML = '';
+      if (file.size > MAX_BYTES) return setStatus('File is too large (max 4 MB).', true);
+      setStatus('Converting...');
+      try {
+        const res = await fetch('/api/convert?quality=' + quality.value, { method: 'POST', body: file });
+        if (!res.ok) return setStatus(await res.text(), true);
+        const blob = await res.blob();
+        if (lastUrl) URL.revokeObjectURL(lastUrl);
+        lastUrl = URL.createObjectURL(blob);
+        const name = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+        result.innerHTML = '<img alt="Converted preview"><br><a class="button">Download ' + '</a>';
+        result.querySelector('img').src = lastUrl;
+        const link = result.querySelector('a');
+        link.href = lastUrl;
+        link.download = name;
+        link.textContent = 'Download ' + name;
+        setStatus('Done.');
+      } catch (e) {
+        setStatus('Conversion failed: ' + e.message, true);
+      }
+    }
+  </script>
+</body>
+</html>
